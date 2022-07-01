@@ -148,7 +148,7 @@ def handler(event: Dict[str, str], context: None) -> Dict[str, int]:  # pylint: 
         print("Body was not valid JSON")
         return {"statusCode": 204}
 
-    if "HtmlBody" not in event:
+    if "HtmlBody" not in json_payload:
         print("Did not find expected key 'HtmlBody' in JSON body")
         return {"statusCode": 204}
 

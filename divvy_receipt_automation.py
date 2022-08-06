@@ -68,7 +68,13 @@ def digikey_download_pdf(invoice_uuid: str) -> Optional[bytes]:
     :param invoice_uuid: the UUID of the invoice to download
     :return: the bytes for the PDF, or None if it could not be downloaded
     """
-    pdf_binary_response = get("https://www.digikey.com/MyDigiKey/Invoice/PDF", params={"id": invoice_uuid})
+    pdf_binary_response = get(
+        "https://www.digikey.com/MyDigiKey/Invoice/PDF",
+        params={"id": invoice_uuid},
+        headers={
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"  # noqa
+        },
+    )
 
     if pdf_binary_response.status_code != 200:
         print(f"Digi-Key returned {pdf_binary_response.status_code} when downloading PDF")
@@ -130,12 +136,12 @@ def process_digikey_email(html_body: str) -> None:
     digikey_forward_to_divvy(invoice_pdf_binary)
 
 
-def handler(event: Dict[str, str], context: None) -> Dict[str, int]:  # pylint: disable=unused-argument
+def handler(event: Dict[str, str], _: None) -> Dict[str, int]:
     """
     Entrypoint for AWS Lambda
 
     :param event: The event to process
-    :param context: Unused but passed by Lambda anyway
+    :param _: Unused but passed by Lambda anyway
     :return: always a 204 status code, unless something really broke
     """
     if "body" not in event:

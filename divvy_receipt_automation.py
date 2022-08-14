@@ -86,7 +86,7 @@ def digikey_download_pdf(invoice_uuid: str) -> Optional[bytes]:
 
 def digikey_forward_to_divvy(pdf_binary: bytes) -> None:
     """
-    Send a Digi-Key invoice PDF to Divvy
+    Send a Digi-Key receipt PDF to Divvy
 
     :param pdf_binary: The PDF bytes to send
     """
@@ -96,12 +96,12 @@ def digikey_forward_to_divvy(pdf_binary: bytes) -> None:
         json={
             "From": DIGIKEY_SENDER_EMAIL_ADDRESS,
             "To": DIVVY_RECEIPT_EMAIL_ADDRESS,
-            "Subject": "Invoice for Digi-Key transaction",
+            "Subject": "Receipt for Digi-Key transaction",
             "TextBody": "This is an automatically generated email to upload a Digi-Key receipt to Divvy. Please build a proper API so I don't have to do this. https://github.com/RoboJackets/divvy-receipt-automation",  # noqa: E501
             "MessageStream": "outbound",
             "Attachments": [
                 {
-                    "Name": "invoice.pdf",
+                    "Name": "receipt.pdf",
                     "Content": b64encode(pdf_binary).decode("utf-8"),
                     "ContentType": "application/pdf",
                 }
@@ -114,6 +114,11 @@ def digikey_forward_to_divvy(pdf_binary: bytes) -> None:
 
 
 def mcmaster_forward_to_divvy(pdf_base64: str) -> None:
+    """
+    Send a McMaster-Carr receipt PDF to Divvy
+
+    :param pdf_base64: the base64 encoded PDF to send
+    """
     postmark_response = post(
         "https://api.postmarkapp.com/email",
         headers={"X-Postmark-Server-Token": POSTMARK_TOKEN},
@@ -133,10 +138,13 @@ def mcmaster_forward_to_divvy(pdf_base64: str) -> None:
         },
     )
 
+    print(postmark_response.status_code)
+    print(postmark_response.text)
+
 
 def process_digikey_email(html_body: str) -> None:
     """
-    Process an email from Digi-Key and forward it to Divvy if it is for an invoice
+    Process an email from Digi-Key and forward it to Divvy if it is for a receipt
 
     :param html_body: the HTML of the email to parse
     """
@@ -159,6 +167,11 @@ def process_digikey_email(html_body: str) -> None:
 
 
 def process_mcmaster_email(attachments: List[Dict[str, str]]) -> None:
+    """
+    Process an email from McMaster-Carr and forward it to Divvy
+
+    :param attachments: the attachments to parse
+    """
     for attachment in attachments:
         if attachment["ContentType"] == "application/pdf":
             mcmaster_forward_to_divvy(attachment["Content"])

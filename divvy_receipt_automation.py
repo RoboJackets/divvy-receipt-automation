@@ -5,7 +5,7 @@ from base64 import b64encode
 from json import JSONDecodeError, loads
 from os import environ
 from re import search
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from bs4 import BeautifulSoup
 
@@ -17,6 +17,7 @@ DIGIKEY_INVOICE_UUID_REGEX = r"(?P<uuid>[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z
 DIVVY_RECEIPT_EMAIL_ADDRESS = environ["DIVVY_RECEIPT_EMAIL_ADDRESS"]
 POSTMARK_TOKEN = environ["POSTMARK_TOKEN"]
 DIGIKEY_SENDER_EMAIL_ADDRESS = environ["DIGIKEY_SENDER_EMAIL_ADDRESS"]
+MCMASTER_SENDER_EMAIL_ADDRESS = environ["MCMASTER_SENDER_EMAIL_ADDRESS"]
 
 
 def digikey_get_invoice_tracking_url(html_body: str) -> Optional[str]:
@@ -112,6 +113,27 @@ def digikey_forward_to_divvy(pdf_binary: bytes) -> None:
     print(postmark_response.text)
 
 
+def mcmaster_forward_to_divvy(pdf_base64: str) -> None:
+    postmark_response = post(
+        "https://api.postmarkapp.com/email",
+        headers={"X-Postmark-Server-Token": POSTMARK_TOKEN},
+        json={
+            "From": MCMASTER_SENDER_EMAIL_ADDRESS,
+            "To": DIVVY_RECEIPT_EMAIL_ADDRESS,
+            "Subject": "Receipt for McMaster-Carr transaction",
+            "TextBody": "This is an automatically generated email to upload a McMaster-Carr receipt to Divvy. Please build a proper API so I don't have to do this. https://github.com/RoboJackets/divvy-receipt-automation",  # noqa: E501
+            "MessageStream": "outbound",
+            "Attachments": [
+                {
+                    "Name": "receipt.pdf",
+                    "Content": pdf_base64,
+                    "ContentType": "application/pdf",
+                }
+            ],
+        },
+    )
+
+
 def process_digikey_email(html_body: str) -> None:
     """
     Process an email from Digi-Key and forward it to Divvy if it is for an invoice
@@ -134,6 +156,12 @@ def process_digikey_email(html_body: str) -> None:
         return
 
     digikey_forward_to_divvy(invoice_pdf_binary)
+
+
+def process_mcmaster_email(attachments: List[Dict[str, str]]) -> None:
+    for attachment in attachments:
+        if attachment["ContentType"] == "application/pdf":
+            mcmaster_forward_to_divvy(attachment["Content"])
 
 
 def handler(event: Dict[str, str], _: None) -> Dict[str, int]:
@@ -159,8 +187,11 @@ def handler(event: Dict[str, str], _: None) -> Dict[str, int]:
         return {"statusCode": 204}
 
     html_body = json_payload["HtmlBody"]
+    attachments = json_payload["Attachments"]
 
     if "digikey" in html_body:
         process_digikey_email(html_body)
+    elif "mcmaster" in html_body:
+        process_mcmaster_email(attachments)
 
     return {"statusCode": 204}

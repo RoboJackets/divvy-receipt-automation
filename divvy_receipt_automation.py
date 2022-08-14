@@ -5,7 +5,7 @@ from base64 import b64encode
 from json import JSONDecodeError, loads
 from os import environ
 from re import search
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 from bs4 import BeautifulSoup
 

@@ -173,7 +173,7 @@ def process_mcmaster_email(attachments: List[Dict[str, str]]) -> None:
     :param attachments: the attachments to parse
     """
     for attachment in attachments:
-        if attachment["ContentType"] == "application/pdf":
+        if attachment["ContentType"] in ["application/pdf", "application/octet-stream"]:
             mcmaster_forward_to_divvy(attachment["Content"])
 
 

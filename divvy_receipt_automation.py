@@ -142,6 +142,7 @@ def mcmaster_forward_to_divvy(pdf_base64: str) -> None:
     print(postmark_response.status_code)
     print(postmark_response.text)
 
+
 def top_kart_forward_to_divvy(pdf_base64: str) -> None:
     """
     Send a Top Kart receipt PDF to Divvy

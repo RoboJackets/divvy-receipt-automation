@@ -18,6 +18,7 @@ DIVVY_RECEIPT_EMAIL_ADDRESS = environ["DIVVY_RECEIPT_EMAIL_ADDRESS"]
 POSTMARK_TOKEN = environ["POSTMARK_TOKEN"]
 DIGIKEY_SENDER_EMAIL_ADDRESS = environ["DIGIKEY_SENDER_EMAIL_ADDRESS"]
 MCMASTER_SENDER_EMAIL_ADDRESS = environ["MCMASTER_SENDER_EMAIL_ADDRESS"]
+TOP_KART_SENDER_EMAIL_ADDRESS = environ["TOP_KART_SENDER_EMAIL_ADDRESS"]
 
 
 def digikey_get_invoice_tracking_url(html_body: str) -> Optional[str]:
@@ -141,6 +142,34 @@ def mcmaster_forward_to_divvy(pdf_base64: str) -> None:
     print(postmark_response.status_code)
     print(postmark_response.text)
 
+def top_kart_forward_to_divvy(pdf_base64: str) -> None:
+    """
+    Send a Top Kart receipt PDF to Divvy
+
+    :param pdf_base64: the base64 encoded PDF to send
+    """
+    postmark_response = post(
+        "https://api.postmarkapp.com/email",
+        headers={"X-Postmark-Server-Token": POSTMARK_TOKEN},
+        json={
+            "From": TOP_KART_SENDER_EMAIL_ADDRESS,
+            "To": DIVVY_RECEIPT_EMAIL_ADDRESS,
+            "Subject": "Receipt for Top Kart transaction",
+            "TextBody": "This is an automatically generated email to upload a Top Kart receipt to Divvy. Please build a proper API so I don't have to do this. https://github.com/RoboJackets/divvy-receipt-automation",  # noqa: E501
+            "MessageStream": "outbound",
+            "Attachments": [
+                {
+                    "Name": "receipt.pdf",
+                    "Content": pdf_base64,
+                    "ContentType": "application/pdf",
+                }
+            ],
+        },
+    )
+
+    print(postmark_response.status_code)
+    print(postmark_response.text)
+
 
 def process_digikey_email(html_body: str) -> None:
     """
@@ -177,6 +206,17 @@ def process_mcmaster_email(attachments: List[Dict[str, str]]) -> None:
             mcmaster_forward_to_divvy(attachment["Content"])
 
 
+def process_top_kart_email(attachments: List[Dict[str, str]]) -> None:
+    """
+    Process an email from Top Kart and forward it to Divvy
+
+    :param attachments: the attachments to parse
+    """
+    for attachment in attachments:
+        if attachment["ContentType"] in ["application/pdf", "application/octet-stream"]:
+            top_kart_forward_to_divvy(attachment["Content"])
+
+
 def handler(event: Dict[str, str], _: None) -> Dict[str, int]:
     """
     Entrypoint for AWS Lambda
@@ -206,5 +246,7 @@ def handler(event: Dict[str, str], _: None) -> Dict[str, int]:
         process_digikey_email(html_body)
     elif "mcmaster" in html_body:
         process_mcmaster_email(attachments)
+    elif "topkart" in html_body:
+        process_top_kart_email(attachments)
 
     return {"statusCode": 204}
